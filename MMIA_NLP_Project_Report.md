@@ -140,7 +140,7 @@ El trabajo experimental se diseñó para **evaluar sistemáticamente** tres estr
 - **SST Fine-tuning**: 0.006 (Estable)
 - **SST LoRA**: 0.010 (Estable)
 - **CFIMDB Zero-shot**: 0.351 (Inconsistente)
-- **CFIMDB Fine-tuning**: 0.366 (⚠️ **Overfitting detectado**)
+- **CFIMDB Fine-tuning**: 0.366 (**Overfitting detectado**)
 - **CFIMDB LoRA**: 0.188 (Moderadamente estable)
 
 #### **Observaciones Importantes:**
@@ -284,25 +284,25 @@ El trabajo experimental se diseñó para **evaluar sistemáticamente** tres estr
 **Basado en los resultados experimentales obtenidos, se recomienda:**
 
 #### **Cuándo usar Fine-tuning Completo:**
-- ✅ **Recursos computacionales abundantes** (GPU de alta capacidad, tiempo suficiente)
-- ✅ **Aplicaciones de producción** donde el rendimiento es crítico
-- ✅ **Datasets complejos** como CFIMDB donde se observa mayor beneficio (+259.5%)
-- ✅ **Cuando la precisión es más importante que la eficiencia**
-- ⚠️ **Consideración**: Implementar early stopping para evitar overfitting
+- **Recursos computacionales abundantes** (GPU de alta capacidad, tiempo suficiente)
+- **Aplicaciones de producción** donde el rendimiento es crítico
+- **Datasets complejos** como CFIMDB donde se observa mayor beneficio (+259.5%)
+- **Cuando la precisión es más importante que la eficiencia**
+- **Consideración**: Implementar early stopping para evitar overfitting
 
 #### **Cuándo usar LoRA Fine-tuning:**
-- ✅ **Recursos limitados** (GPU de capacidad media, tiempo restringido)
-- ✅ **Prototipado rápido** y experimentación
-- ✅ **Múltiples tareas** donde se necesita adaptar el modelo a diferentes dominios
-- ✅ **Balance costo-beneficio** óptimo
-- ✅ **Mejor generalización** en datasets complejos (gap 0.188 vs 0.366)
+- **Recursos limitados** (GPU de capacidad media, tiempo restringido)
+- **Prototipado rápido** y experimentación
+- **Múltiples tareas** donde se necesita adaptar el modelo a diferentes dominios
+- **Balance costo-beneficio** óptimo
+- **Mejor generalización** en datasets complejos (gap 0.188 vs 0.366)
 
 #### **Cuándo usar Zero-shot Prompting:**
-- ✅ **Análisis exploratorio** inicial
-- ✅ **Recursos muy limitados** (solo CPU, sin tiempo de entrenamiento)
-- ✅ **Benchmarking rápido** para comparar datasets
-- ✅ **Casos donde la precisión no es crítica**
-- ⚠️ **Limitación**: Rendimiento muy bajo en datasets complejos (0.131 en CFIMDB)
+- **Análisis exploratorio** inicial
+- **Recursos muy limitados** (solo CPU, sin tiempo de entrenamiento)
+- **Benchmarking rápido** para comparar datasets
+- **Casos donde la precisión no es crítica**
+- **Limitación**: Rendimiento muy bajo en datasets complejos (0.131 en CFIMDB)
 
 #### **Métricas de Monitoreo Implementadas**
 
