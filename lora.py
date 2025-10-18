@@ -47,8 +47,28 @@ class LoRALayer(nn.Module):
         Returns:
             Output tensor of shape (batch, seq, out_features)
         """
-        # todo
-        raise NotImplementedError
+        # 1. Compute the original layer output
+        original_output = self.original_layer(x)
+        
+        # 2. Compute the LoRA path: x -> A -> B -> scale
+        # 2a: Apply Layer A (down-projection)
+        # lora_A shape: (rank, in_features)
+        # x shape: (batch, seq, in_features)
+        # After A: (batch, seq, rank)
+        lora_intermediate = torch.matmul(x, self.lora_A.t())
+        
+        # 2b: Apply Layer B (up-projection)
+        # lora_B shape: (out_features, rank)
+        # After B: (batch, seq, out_features)
+        lora_output = torch.matmul(lora_intermediate, self.lora_B.t())
+        
+        # 2c: Multiply by the scale (alpha/rank)
+        lora_output = lora_output * self.scaling
+        
+        # 3. Add the LoRA output to the original output
+        final_output = original_output + lora_output
+        
+        return final_output
 
 
 

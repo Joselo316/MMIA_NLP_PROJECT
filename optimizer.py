@@ -32,10 +32,9 @@ class AdamW(Optimizer):
             loss = closure()
 
         for group in self.param_groups:
-
-            # TODO: Clip gradients if max_grad_norm is set
+            # Clip gradients if max_grad_norm is set
             if group['max_grad_norm'] is not None:
-                raise NotImplementedError()
+                torch.nn.utils.clip_grad_norm_(group["params"], group['max_grad_norm'])
             
             for p in group["params"]:
                 if p.grad is None:
@@ -44,23 +43,48 @@ class AdamW(Optimizer):
                 if grad.is_sparse:
                     raise RuntimeError("Adam does not support sparse gradients, please consider SparseAdam instead")
 
-                raise NotImplementedError()
-
                 # State should be stored in this dictionary
                 state = self.state[p]
 
-                # TODO: Access hyperparameters from the `group` dictionary
+                # Access hyperparameters from the `group` dictionary
                 alpha = group["lr"]
+                beta1, beta2 = group["betas"]
+                eps = group["eps"]
+                weight_decay = group["weight_decay"]
 
-                # TODO: Update first and second moments of the gradients
+                # Initialize state if not present
+                if len(state) == 0:
+                    state['step'] = 0
+                    state['exp_avg'] = torch.zeros_like(p.data)
+                    state['exp_avg_sq'] = torch.zeros_like(p.data)
 
-                # TODO: Bias correction
-                # Please note that we are using the "efficient version" given in Algorithm 2 
-                # https://arxiv.org/pdf/1711.05101
+                # Update first and second moments of the gradients
+                state['step'] += 1
+                exp_avg = state['exp_avg']
+                exp_avg_sq = state['exp_avg_sq']
+                
+                # Update biased first moment estimate
+                exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
+                
+                # Update biased second raw moment estimate
+                exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
 
-                # TODO: Update parameters
+                # Bias correction (efficient version)
+                bias_correction1 = 1 - beta1 ** state['step']
+                bias_correction2 = 1 - beta2 ** state['step']
+                
+                # Compute bias-corrected first moment estimate
+                exp_avg_hat = exp_avg / bias_correction1
+                
+                # Compute bias-corrected second raw moment estimate
+                exp_avg_sq_hat = exp_avg_sq / bias_correction2
 
-                # TODO: Add weight decay after the main gradient-based updates.
-                # Please note that the learning rate should be incorporated into this update.
+                # Update parameters
+                p.data.addcdiv_(exp_avg_hat, exp_avg_sq_hat.sqrt().add_(eps), value=-alpha)
+
+                # Add weight decay after the main gradient-based updates
+                # Weight decay is applied with learning rate incorporated
+                if weight_decay != 0:
+                    p.data.mul_(1 - alpha * weight_decay)
 
         return loss

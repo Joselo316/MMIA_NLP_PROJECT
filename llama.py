@@ -42,8 +42,12 @@ class LayerNorm(torch.nn.Module):
         Returns:
             torch.Tensor: The normalized tensor.
         """
-        # todo
-        raise NotImplementedError
+        # Calculate mean and variance along the last dimension
+        mean = x.mean(dim=-1, keepdim=True)
+        var = x.var(dim=-1, keepdim=True, unbiased=False)
+        
+        # Apply LayerNorm formula: (x - mean) / sqrt(variance + eps)
+        return (x - mean) / torch.sqrt(var + self.eps)
 
     def forward(self, x):
         """
@@ -93,8 +97,21 @@ class Attention(nn.Module):
         Make sure to use attention_dropout (self.attn_dropout) on the computed
         attention matrix before applying it to the value tensor.
         '''
-        # todo
-        raise NotImplementedError
+        # Compute attention scores: Q @ K^T / sqrt(head_dim)
+        # Shape: (bs, n_local_heads, seqlen, seqlen)
+        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.head_dim)
+        
+        # Apply softmax to get attention weights
+        attn_weights = F.softmax(scores, dim=-1)
+        
+        # Apply attention dropout
+        attn_weights = self.attn_dropout(attn_weights)
+        
+        # Apply attention weights to values
+        # Shape: (bs, n_local_heads, seqlen, head_dim)
+        output = torch.matmul(attn_weights, value)
+        
+        return output
 
     def forward(
         self,
@@ -196,8 +213,25 @@ class LlamaLayer(nn.Module):
         5) add a residual connection from the unnormalized self-attention output to the
            output of the feed-forward network
         '''
-        # todo
-        raise NotImplementedError
+        # 1) Layer normalization of the input
+        norm_x = self.attention_norm(x)
+        
+        # 2) Self-attention on the layer-normalized input
+        attn_output = self.attention(norm_x)
+        
+        # 3) Residual connection (add input to attention output)
+        h = x + attn_output
+        
+        # 4) Layer normalization on the output of the self-attention
+        norm_h = self.ffn_norm(h)
+        
+        # 5) Feed-forward network on the layer-normalized output
+        ffn_output = self.feed_forward(norm_h)
+        
+        # 6) Residual connection from unnormalized self-attention output to FFN output
+        output = h + ffn_output
+        
+        return output
 
 class Llama(LlamaPreTrainedModel):
     def __init__(self, config: LlamaConfig):
@@ -273,12 +307,9 @@ class Llama(LlamaPreTrainedModel):
             # forward the model to get the logits for the index in the sequence
             logits, _ = self(idx_cond)
             logits = logits[:, -1, :] # crop to just the final time step
-            # todo
-            raise NotImplementedError
-            
             if temperature == 0.0:
                 # select the single most likely index
-                idx_next = None
+                idx_next = torch.argmax(logits, dim=-1, keepdim=True)
             else:
                 '''
                 Perform temperature sampling with epsilon sampling:
@@ -288,7 +319,20 @@ class Llama(LlamaPreTrainedModel):
                 4) Renormalize the filtered probabilities so they sum to 1.
                 5) Sample from this filtered probability distribution.
                 '''
-                idx_next = None
+                # 1) Scale logits with temperature and apply softmax
+                probs = F.softmax(logits / temperature, dim=-1)
+                
+                # 2) Create mask for tokens with probability >= epsilon
+                mask = probs >= epsilon
+                
+                # 3) Apply mask to keep only tokens with probability >= epsilon
+                filtered_probs = probs * mask
+                
+                # 4) Renormalize so probabilities sum to 1
+                filtered_probs = filtered_probs / filtered_probs.sum(dim=-1, keepdim=True)
+                
+                # 5) Sample from the filtered probability distribution
+                idx_next = torch.multinomial(filtered_probs, num_samples=1)
             # append sampled index to the running sequence and continue
             idx = torch.cat((idx, idx_next), dim=1)
         

@@ -50,25 +50,50 @@ def apply_rotary_emb(
 
     _, seqlen, _, _ = query.shape
     device = query.device
-    # todo
-    #
-    # Please refer to Section 3 in https://arxiv.org/abs/2104.09864.
-
-    # reshape xq and xk to match the complex representation
+    
+    # Create position indices
+    position = torch.arange(seqlen, device=device).float()
+    
+    # Create frequency indices for each dimension pair
+    dim_indices = torch.arange(0, head_dim // 2, device=device).float()
+    
+    # Compute frequencies: theta^(-2i/d) for i in [0, d/2-1]
+    freqs = 1.0 / (theta ** (2 * dim_indices / head_dim))
+    
+    # Create position-frequency matrix: pos * freqs
+    # Shape: (seqlen, head_dim//2)
+    freqs_cis = torch.outer(position, freqs)
+    
+    # Compute cos and sin values
+    cos_freqs = torch.cos(freqs_cis)
+    sin_freqs = torch.sin(freqs_cis)
+    
+    # Reshape to match the complex representation
+    # freqs_cis should have shape (seqlen, head_dim//2)
+    # We need to reshape it to match query shape for broadcasting
+    cos_freqs = cos_freqs.unsqueeze(0).unsqueeze(2)  # (1, seqlen, 1, head_dim//2)
+    sin_freqs = sin_freqs.unsqueeze(0).unsqueeze(2)  # (1, seqlen, 1, head_dim//2)
+    
+    # Expand to match the batch and head dimensions
+    cos_freqs = cos_freqs.expand(query.shape[0], -1, query.shape[2], -1)
+    sin_freqs = sin_freqs.expand(query.shape[0], -1, query.shape[2], -1)
+    
+    # Reshape query and key to match the complex representation
     query_real, query_imag = query.float().reshape(query.shape[:-1] + (-1, 2)).unbind(-1)
     key_real, key_imag = key.float().reshape(key.shape[:-1] + (-1, 2)).unbind(-1)
-    # This separates each query/key vector into its odd and even indices (assuming *one-indexing*).
-    # query_real contains q_1, q_3, q_5, ... and query_imag contains q_2, q_4, q_6, ...
-
-    # First, compute the trigonometric values in the second and fourth columns in
-    # slide 49 (linked above).
-
-    # Then, combine these trigonometric values with the tensors query_real, query_imag,
-    # key_real, and key_imag.
-
-    raise NotImplementedError
-
-    query_out = None
-    key_out = None
+    
+    # Apply rotary embeddings using complex multiplication
+    # For complex number z = a + bi and rotation matrix R = [cos -sin; sin cos]
+    # R * z = (a*cos - b*sin) + i(a*sin + b*cos)
+    query_out_real = query_real * cos_freqs - query_imag * sin_freqs
+    query_out_imag = query_real * sin_freqs + query_imag * cos_freqs
+    
+    key_out_real = key_real * cos_freqs - key_imag * sin_freqs
+    key_out_imag = key_real * sin_freqs + key_imag * cos_freqs
+    
+    # Combine real and imaginary parts back to original shape
+    query_out = torch.stack([query_out_real, query_out_imag], dim=-1).reshape(query.shape).type_as(query)
+    key_out = torch.stack([key_out_real, key_out_imag], dim=-1).reshape(key.shape).type_as(key)
+    
     # Return the rotary position embeddings for the query and key tensors
     return query_out, key_out

@@ -1,0 +1,13 @@
+Dataset,Method,Split,Accuracy
+SST,Zero-shot,dev,0.244
+SST,Zero-shot,test,0.248
+SST,Fine-tuning,dev,0.423
+SST,Fine-tuning,test,0.417
+SST,LoRA,dev,0.273
+SST,LoRA,test,0.263
+CFIMDB,Zero-shot,dev,0.482
+CFIMDB,Zero-shot,test,0.131
+CFIMDB,Fine-tuning,dev,0.837
+CFIMDB,Fine-tuning,test,0.471
+CFIMDB,LoRA,dev,0.506
+CFIMDB,LoRA,test,0.318
